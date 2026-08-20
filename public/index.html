@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Banco de Treinamentos NR — SST Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="screen-login">
+  <div class="login-card">
+    <div class="hazard"></div>
+    <div class="login-body">
+      <div class="login-eyebrow">SST · Segurança do Trabalho</div>
+      <h1 class="login-title">Banco de Treinamentos NR</h1>
+      <p class="login-sub">Controle de treinamentos por Norma Regulamentadora, certificados, instrutores e vencimentos. Escolha como deseja entrar.</p>
+      <div class="role-options">
+        <button class="role-btn" onclick="selectRole('admin')">
+          <div class="role-tag admin">ADM</div>
+          <div><div class="role-name">Administrador</div><div class="role-desc">Cadastra setores, NRs, treinamentos, instrutores e certificados.</div></div>
+        </button>
+        <button class="role-btn" onclick="selectRole('view')">
+          <div class="role-tag view">CON</div>
+          <div><div class="role-name">Consulta</div><div class="role-desc">Painel e banco de treinamentos com filtros, somente leitura.</div></div>
+        </button>
+      </div>
+      <div class="pw-row" id="pw-row">
+        <input type="password" id="pw-input" placeholder="Senha do administrador">
+        <button class="btn btn-navy" onclick="confirmAdminLogin()">Entrar</button>
+      </div>
+      <div id="login-error">Senha incorreta. Tente novamente.</div>
+    </div>
+    <div class="login-footer" id="login-footer">Conectando ao servidor...</div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="screen-app">
+  <div class="hazard"></div>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo" id="brand-logo-wrap"><div class="brand-mark">NR</div></div>
+      <div class="brand-text"><h1>Banco de Treinamentos</h1><span>Controle SST por Norma Regulamentadora</span></div>
+    </div>
+    <div class="topbar-right">
+      <span class="live-dot" title="Conectado ao MongoDB"></span>
+      <span id="mode-badge" class="mode-badge admin">MODO ADMINISTRADOR</span>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Trocar modo</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="dashboard" onclick="showTab('dashboard')">Painel</button>
+    <button class="tab-btn" data-tab="banco" onclick="showTab('banco')">Banco de Treinamentos</button>
+    <button class="tab-btn admin-tab" data-tab="normas" onclick="showTab('normas')">Normas (NR)</button>
+    <button class="tab-btn admin-tab" data-tab="setores" onclick="showTab('setores')">Setores</button>
+    <button class="tab-btn admin-tab" data-tab="docs" onclick="showTab('docs')">Documentos</button>
+  </nav>
+
+  <main>
+    <!-- ---------------- DASHBOARD ---------------- -->
+    <section id="view-dashboard" class="view active">
+      <div class="stat-grid">
+        <div class="stat-card total" onclick="quickFilter('all')"><div class="num" id="st-total">0</div><div class="lbl">Total de registros</div></div>
+        <div class="stat-card ok" onclick="quickFilter('ok')"><div class="num" id="st-ok">0</div><div class="lbl">Em dia</div></div>
+        <div class="stat-card att" onclick="quickFilter('att')"><div class="num" id="st-att">0</div><div class="lbl">Em atenção (60 dias)</div></div>
+        <div class="stat-card exp" onclick="quickFilter('exp')"><div class="num" id="st-exp">0</div><div class="lbl">Vencidos</div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Próximos vencimentos</h3></div>
+        <div class="card-body" id="dash-upcoming"></div>
+      </div>
+    </section>
+
+    <!-- ---------------- BANCO (CARDS) ---------------- -->
+    <section id="view-banco" class="view">
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-body">
+          <div class="filters">
+            <div class="field"><label>Setor</label><select id="f-setor" onchange="renderBanco()"><option value="">Todos</option></select></div>
+            <div class="field"><label>Status</label>
+              <select id="f-status" onchange="renderBanco()">
+                <option value="">Todos</option><option value="ok">Em dia</option><option value="att">Em atenção</option><option value="exp">Vencido</option>
+              </select>
+            </div>
+            <div class="field"><label>Norma (NR)</label><select id="f-nr" onchange="renderBanco()"><option value="">Todas</option></select></div>
+            <div class="field" style="flex:1; min-width:180px;"><label>Buscar funcionário</label><input type="text" id="f-busca" placeholder="Nome do funcionário..." oninput="renderBanco()"></div>
+            <button class="btn btn-outline btn-sm" onclick="clearFilters()">Limpar filtros</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Registros de treinamento</h3>
+          <button class="btn btn-orange btn-sm admin-only" onclick="openTreinoModal()">+ Novo treinamento</button>
+        </div>
+        <div class="card-body">
+          <div class="treino-grid" id="banco-grid"></div>
+          <div id="banco-empty" class="empty" style="display:none;"><b>Nenhum registro encontrado</b>Ajuste os filtros ou cadastre um novo treinamento.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------------- NORMAS (NR) ---------------- -->
+    <section id="view-normas" class="view">
+      <div class="card">
+        <div class="card-head">
+          <h3>Banco de conteúdos por Norma Regulamentadora</h3>
+          <button class="btn btn-orange btn-sm admin-only" onclick="openNRModal()">+ Nova NR</button>
+        </div>
+        <div class="card-body"><div class="setor-grid" id="nr-grid"></div></div>
+      </div>
+    </section>
+
+    <!-- ---------------- SETORES ---------------- -->
+    <section id="view-setores" class="view">
+      <div class="card">
+        <div class="card-head">
+          <h3>Setores e responsáveis</h3>
+          <button class="btn btn-orange btn-sm admin-only" onclick="openSetorModal()">+ Novo setor</button>
+        </div>
+        <div class="card-body"><div class="setor-grid" id="setores-grid"></div></div>
+      </div>
+    </section>
+
+    <!-- ---------------- DOCUMENTOS ---------------- -->
+    <section id="view-docs" class="view">
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head"><h3>Identidade visual</h3></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field"><label>Nome da empresa</label><input type="text" id="cfg-empresa" placeholder="Nome exibido nos documentos"></div>
+            <div class="field"><label>Logomarca (imagem)</label><input type="file" id="cfg-logo" accept="image/*" onchange="handleLogoUpload(event)"></div>
+            <div class="field full" id="logo-preview-wrap" style="display:none;">
+              <label>Prévia</label>
+              <div class="logo-preview"><img id="logo-preview-img" alt="Logomarca"><button class="btn btn-outline btn-sm" onclick="removeLogo()">Remover logo</button></div>
+            </div>
+          </div>
+          <button class="btn btn-navy btn-sm" style="margin-top:12px;" onclick="saveConfig()">Salvar identidade visual</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Modelos e formulários</h3></div>
+        <div class="card-body">
+          <div class="setor-grid">
+            <div class="setor-card">
+              <h4>Lista de presença</h4>
+              <div class="resp">Escolha NR, data e carga horária: colaboradores vencidos/em atenção são listados automaticamente. Ao salvar, gera também comprovantes e certificados de todos os participantes.</div>
+              <button class="btn btn-navy btn-sm" onclick="openPresencaModal()">Abrir</button>
+            </div>
+            <div class="setor-card">
+              <h4>Comprovante de entrega</h4>
+              <div class="resp">Lista automaticamente colaboradores vencidos/em atenção para seleção rápida individual.</div>
+              <button class="btn btn-navy btn-sm" onclick="openComprovanteModal()">Abrir</button>
+            </div>
+            <div class="setor-card">
+              <h4>Modelo de certificado</h4>
+              <div class="resp">Frente com dados do certificado; verso com conteúdo programático e instrutores por tema/data.</div>
+              <button class="btn btn-navy btn-sm" onclick="openCertificadoModal()">Abrir</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">Banco de Treinamentos NR <span class="mono">v2.0</span> · Node.js · Express · MongoDB · dados centralizados no servidor</footer>
+</div>
+
+<!-- ============ MODAL: SETOR ============ -->
+<div class="modal-overlay" id="modal-setor">
+  <div class="modal">
+    <div class="modal-head"><h3 id="setor-modal-title">Novo setor</h3><button onclick="closeModal('modal-setor')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="setor-id">
+      <div class="form-grid">
+        <div class="field full"><label>Nome do setor</label><input type="text" id="setor-nome" placeholder="Ex: Manutenção, Obras, Almoxarifado..."></div>
+        <div class="field full"><label>Responsável pelo setor</label><input type="text" id="setor-resp" placeholder="Nome do responsável"></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-setor')">Cancelar</button><button class="btn btn-orange" onclick="saveSetor()">Salvar setor</button></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: NORMA (NR) ============ -->
+<div class="modal-overlay" id="modal-nr">
+  <div class="modal wide">
+    <div class="modal-head"><h3 id="nr-modal-title">Nova NR</h3><button onclick="closeModal('modal-nr')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="nr-id">
+      <div class="form-grid">
+        <div class="field"><label>Código</label><input type="text" id="nr-code" placeholder="Ex: NR-35"></div>
+        <div class="field"><label>Nome da norma</label><input type="text" id="nr-name" placeholder="Ex: Trabalho em Altura"></div>
+        <div class="field full"><label>Conteúdo programático geral</label><textarea id="nr-conteudo" rows="4" placeholder="Tópicos e conteúdo padrão do treinamento desta NR..."></textarea></div>
+        <div class="form-section-title">Responsáveis técnicos padrão (podem ser vários)</div>
+        <div class="field full">
+          <div id="nr-instrutores-rows" class="instrutor-rows"></div>
+          <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addInstrutorRow('nr-instrutores-rows')">+ Adicionar instrutor</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-nr')">Cancelar</button><button class="btn btn-orange" onclick="saveNR()">Salvar NR</button></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: TREINAMENTO ============ -->
+<div class="modal-overlay" id="modal-treino">
+  <div class="modal wide">
+    <div class="modal-head"><h3 id="treino-modal-title">Novo treinamento</h3><button onclick="closeModal('modal-treino')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="treino-id">
+      <div class="form-grid">
+        <div class="field full"><label>Nome do funcionário</label><input type="text" id="tr-nome" placeholder="Nome completo"></div>
+        <div class="field"><label>Setor</label><select id="tr-setor"></select></div>
+        <div class="field"><label>Função</label><input type="text" id="tr-funcao" placeholder="Ex: Pedreiro, Técnico..."></div>
+
+        <div class="field full"><label>Norma regulamentadora (NR)</label><select id="tr-nr" onchange="onTreinoNRChange()"></select></div>
+
+        <div class="field"><label>Data do treinamento</label><input type="date" id="tr-data" onchange="autoCalcValidade()"></div>
+        <div class="field">
+          <label>Carga horária</label>
+          <select id="tr-carga" onchange="toggleCargaCustom()">
+            <option value="2">2 horas</option><option value="4">4 horas</option><option value="6">6 horas</option>
+            <option value="8">8 horas</option><option value="16">16 horas</option><option value="20">20 horas</option>
+            <option value="40">40 horas</option><option value="custom">Outra (definir)</option>
+          </select>
+        </div>
+        <div class="field full" id="carga-custom-wrap" style="display:none;"><label>Carga horária personalizada (horas)</label><input type="number" id="tr-carga-custom" min="1" placeholder="Ex: 12"></div>
+
+        <div class="field"><label>Periodicidade / validade</label>
+          <select id="tr-validade-tipo" onchange="autoCalcValidade()">
+            <option value="1">Anual (1 ano)</option><option value="2">Bienal (2 anos)</option><option value="3">Trienal (3 anos)</option><option value="0">Personalizado (definir data)</option>
+          </select>
+        </div>
+        <div class="field"><label>Data de vencimento</label><input type="date" id="tr-validade-data"><div class="hint">Calculada automaticamente — pode ser ajustada manualmente.</div></div>
+
+        <div class="form-section-title">Local e período</div>
+        <div class="field"><label>Local do treinamento</label><input type="text" id="tr-local" placeholder="Ex: Sala de treinamento / Canteiro de obras"></div>
+        <div class="field"><label>Dias de treinamento</label><input type="text" id="tr-dias" placeholder="Ex: 1 dia, ou 05 e 06/03/2026"></div>
+
+        <div class="form-section-title">Conteúdo programático</div>
+        <div class="field full"><textarea id="tr-conteudo" rows="3" placeholder="Preenchido automaticamente pela NR — pode editar"></textarea></div>
+
+        <div class="form-section-title">Responsáveis técnicos pelo treinamento (podem ser vários)</div>
+        <div class="field full">
+          <div id="tr-instrutores-rows" class="instrutor-rows"></div>
+          <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addInstrutorRow('tr-instrutores-rows')">+ Adicionar instrutor</button>
+        </div>
+
+        <div class="field full"><label>Observações</label><textarea id="tr-obs" rows="2" placeholder="Observações gerais sobre o treinamento..."></textarea></div>
+
+        <div class="field full">
+          <label>Certificado (PDF)</label>
+          <input type="file" id="tr-file" accept="application/pdf" onchange="handleFile(event)" style="border:none; padding:0;">
+          <div class="file-row" id="file-status">Nenhum arquivo importado</div>
+        </div>
+      </div>
+      <div id="status-preview" class="status-preview ok"><span class="dot"></span><span id="status-preview-text">Status calculado automaticamente com base na data de vencimento.</span></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-treino')">Cancelar</button><button class="btn btn-orange" onclick="saveTreino()">Salvar treinamento</button></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: VISUALIZAR CERTIFICADO ============ -->
+<div class="modal-overlay" id="modal-viewcert">
+  <div class="modal wide" style="max-width:760px; height:85vh;">
+    <div class="modal-head"><h3>Certificado importado</h3><button onclick="closeModal('modal-viewcert')">&times;</button></div>
+    <div class="modal-body" style="padding:0; flex:1;"><iframe id="cert-frame" style="width:100%; height:75vh; border:none;"></iframe></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: LISTA DE PRESENÇA ============ -->
+<div class="modal-overlay" id="modal-presenca">
+  <div class="modal wide">
+    <div class="modal-head"><h3>Lista de presença</h3><button onclick="closeModal('modal-presenca')">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label>Tipo de treinamento (NR)</label><select id="pr-nr" onchange="onPresencaNRChange()"></select></div>
+        <div class="field"><label>Data do treinamento</label><input type="date" id="pr-data"></div>
+        <div class="field"><label>Carga horária</label><input type="text" id="pr-carga" placeholder="Ex: 8 horas"></div>
+        <div class="field"><label>Local</label><input type="text" id="pr-local" placeholder="Local do treinamento"></div>
+        <div class="field full"><label>Conteúdo programático</label><textarea id="pr-conteudo" rows="2" placeholder="Preenchido automaticamente pela NR"></textarea></div>
+      </div>
+
+      <div class="form-section-title" style="border-top:none; padding-top:0; margin-top:16px;">Responsáveis técnicos pelo treinamento</div>
+      <div id="pr-instrutores-rows" class="instrutor-rows"></div>
+      <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addInstrutorRow('pr-instrutores-rows')">+ Adicionar instrutor</button>
+
+      <div class="info-banner" id="presenca-auto-info" style="margin-top:16px;">Selecione a NR para listar automaticamente os colaboradores com treinamento vencido ou em atenção.</div>
+
+      <div id="presenca-rows-wrap">
+        <table>
+          <thead><tr><th style="width:26px;">#</th><th>Nome</th><th>Função</th><th>Setor</th><th style="width:150px;">Assinatura</th><th></th></tr></thead>
+          <tbody id="presenca-rows"></tbody>
+        </table>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="addPresencaRow()">+ Adicionar linha</button>
+        <button class="btn btn-outline btn-sm" onclick="onPresencaNRChange()">↻ Atualizar lista automática</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-presenca')">Fechar</button>
+      <button class="btn btn-outline" onclick="printPresenca()">Imprimir só a lista</button>
+      <button class="btn btn-orange" onclick="gerarDocumentosCompletos()">Salvar e gerar todos os documentos</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: COMPROVANTE DE ENTREGA ============ -->
+<div class="modal-overlay" id="modal-comprovante">
+  <div class="modal">
+    <div class="modal-head"><h3>Comprovante de entrega de certificado</h3><button onclick="closeModal('modal-comprovante')">&times;</button></div>
+    <div class="modal-body">
+      <div class="info-banner">Lista abaixo mostra automaticamente colaboradores com treinamento <b>vencido</b> ou <b>em atenção</b>.</div>
+      <div class="form-grid">
+        <div class="field full"><label>Colaborador (vencido / em atenção)</label><select id="cp-select" onchange="fillComprovante()"><option value="">-- selecione --</option></select></div>
+        <div class="field full"><label>Nome do funcionário</label><input type="text" id="cp-nome"></div>
+        <div class="field"><label>Norma (NR)</label><input type="text" id="cp-nr"></div>
+        <div class="field"><label>Data de entrega</label><input type="date" id="cp-data"></div>
+        <div class="field full"><label>Responsável pela entrega</label><input type="text" id="cp-resp" placeholder="Nome de quem entrega o certificado"></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-comprovante')">Fechar</button><button class="btn btn-orange" onclick="printComprovante()">Imprimir / Salvar PDF</button></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: MODELO DE CERTIFICADO ============ -->
+<div class="modal-overlay" id="modal-certificado">
+  <div class="modal wide">
+    <div class="modal-head"><h3>Modelo de certificado</h3><button onclick="closeModal('modal-certificado')">&times;</button></div>
+    <div class="modal-body">
+      <div class="info-banner">Lista abaixo mostra automaticamente colaboradores com treinamento <b>vencido</b> ou <b>em atenção</b>. Frente traz os dados; verso traz o conteúdo programático e instrutores.</div>
+      <div class="form-grid">
+        <div class="field full"><label>Colaborador (vencido / em atenção)</label><select id="ce-select" onchange="fillCertificado()"><option value="">-- selecione --</option></select></div>
+        <div class="field full"><label>Empresa</label><input type="text" id="ce-empresa" placeholder="Nome da empresa"></div>
+        <div class="field full"><label>Nome do participante</label><input type="text" id="ce-nome"></div>
+        <div class="field"><label>Norma (NR)</label><input type="text" id="ce-nr"></div>
+        <div class="field"><label>Carga horária</label><input type="text" id="ce-carga" placeholder="Ex: 8 horas"></div>
+        <div class="field"><label>Data de realização</label><input type="date" id="ce-data"></div>
+        <div class="field"><label>Local</label><input type="text" id="ce-local"></div>
+        <div class="field"><label>Dias de treinamento</label><input type="text" id="ce-dias"></div>
+        <div class="field full"><label>Conteúdo programático (verso)</label><textarea id="ce-conteudo" rows="3"></textarea></div>
+        <div class="form-section-title">Responsáveis técnicos pelo treinamento</div>
+        <div class="field full">
+          <div id="ce-instrutores-rows" class="instrutor-rows"></div>
+          <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addInstrutorRow('ce-instrutores-rows')">+ Adicionar instrutor</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-certificado')">Fechar</button><button class="btn btn-orange" onclick="printCertificado()">Imprimir / Salvar PDF</button></div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
