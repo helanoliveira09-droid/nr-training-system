@@ -185,9 +185,9 @@ textarea{ resize:vertical; font-family:'Inter';}
 .info-banner{ background:#EDF1F5; border:1px solid #D7E0E8; border-radius:5px; padding:10px 13px; font-size:12.5px; color:var(--navy); margin-bottom:12px; display:flex; gap:8px; align-items:flex-start;}
 .info-banner b{ font-weight:700;}
 
-/* instrutor rows (nome / registro / conteudo / data) */
+/* instrutor rows (nome / registro / conteudo / data / carga ministrada) */
 .instrutor-rows{ display:flex; flex-direction:column; gap:8px;}
-.instrutor-row{ display:grid; grid-template-columns:1.2fr 1fr 1.4fr .9fr auto; gap:8px; align-items:center; background:#F7F9FB; border:1px solid var(--line); border-radius:5px; padding:8px;}
+.instrutor-row{ display:grid; grid-template-columns:1.15fr .85fr 1.3fr .85fr .85fr auto; gap:8px; align-items:center; background:#F7F9FB; border:1px solid var(--line); border-radius:5px; padding:8px;}
 .instrutor-row input{ padding:7px 9px; font-size:12.5px;}
 .rm-row{ color:var(--red); cursor:pointer; font-weight:700; font-size:18px; border:none; background:none; width:26px;}
 
@@ -205,5 +205,5 @@ footer.app-footer{ text-align:center; padding:22px; font-size:11.5px; color:var(
 @media(max-width:720px){
   .form-grid{ grid-template-columns:1fr;}
   header.topbar{ flex-direction:column; align-items:flex-start;}
-  .instrutor-row{ grid-template-columns:1fr 1fr; grid-template-areas:"a a" "b b" "c c" "d e";}
+  .instrutor-row{ grid-template-columns:1fr 1fr;}
 }
