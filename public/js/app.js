@@ -148,6 +148,7 @@ function instrutorRowHtml(inst){
     '<input type="text" placeholder="Nº de registro" class="i-registro" value="' + esc(inst.registro) + '">' +
     '<input type="text" placeholder="Conteúdo ministrado" class="i-conteudo" value="' + esc(inst.conteudo) + '">' +
     '<input type="date" class="i-data" value="' + esc(inst.data) + '">' +
+    '<input type="text" placeholder="Carga hor. ministrada" class="i-carga" value="' + esc(inst.carga) + '">' +
     '<button type="button" class="rm-row" title="Remover" onclick="this.closest(\'[data-row]\').remove()">&times;</button>' +
   '</div>';
 }
@@ -165,7 +166,8 @@ function collectInstrutorRows(containerId){
     nome: row.querySelector('.i-nome').value.trim(),
     registro: row.querySelector('.i-registro').value.trim(),
     conteudo: row.querySelector('.i-conteudo').value.trim(),
-    data: row.querySelector('.i-data').value
+    data: row.querySelector('.i-data').value,
+    carga: row.querySelector('.i-carga') ? row.querySelector('.i-carga').value.trim() : ''
   })).filter(i => i.nome);
 }
 function instrutoresSummary(list){
@@ -592,8 +594,9 @@ function gerarDocumentosCompletos(){
       carga: carga ? carga + ' horas' : '—', data: fmtDate(data), local: local || '—', dias
     }, instrutores));
     pages.push(certificadoBackHtml(conteudo, instrutores));
-    pages.push(comprovantePageHtml(p.nome, nrFullLabel(nrId), fmtDate(new Date().toISOString().slice(0,10)), 'Responsável Técnico'));
   });
+
+  pages.push(comprovanteListaHtml(nrFullLabel(nrId), fmtDate(new Date().toISOString().slice(0,10)), participants));
 
   const html = docShell('Documentos de Treinamento — ' + (nr ? nr.code : ''), pages.join('<div class="page-break"></div>'));
   openPrintWindow(html);
@@ -684,6 +687,15 @@ function presencaPageHtml(nr, data, carga, local, conteudo, instrutores, partici
     '<table class="print-table"><thead><tr><th>#</th><th>Nome</th><th>Função</th><th>Setor</th><th>Assinatura</th></tr></thead><tbody>' + rows + '</tbody></table>' +
   '</div>';
 }
+function comprovanteListaHtml(nr, data, participants){
+  const rows = participants.map((p,i) => '<tr><td>'+(i+1)+'</td><td>'+p.nome+'</td><td class="sig-cell"></td></tr>').join('');
+  return '<div class="doc-page">' + logoHeader() +
+    '<h1>Comprovante de Entrega de Certificado</h1>' +
+    '<p class="doc-p">Declaramos, para os devidos fins, que os colaboradores relacionados abaixo receberam nesta data o certificado referente ao treinamento da norma regulamentadora indicada, confirmando o recebimento com a assinatura correspondente.</p>' +
+    '<div class="doc-meta"><div><b>Norma:</b> ' + (nr||'—') + '</div><div><b>Data de entrega:</b> ' + (data||'—') + '</div></div>' +
+    '<table class="print-table"><thead><tr><th style="width:36px;">#</th><th>Nome do colaborador</th><th>Assinatura</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+  '</div>';
+}
 function comprovantePageHtml(nome, nr, data, resp){
   return '<div class="doc-page">' + logoHeader() +
     '<h1>Comprovante de Entrega de Certificado</h1>' +
@@ -694,7 +706,9 @@ function comprovantePageHtml(nome, nr, data, resp){
   '</div>';
 }
 function certificadoFrontHtml(info, instrutores){
-  const respNames = (instrutores && instrutores.length) ? instrutores.map(i => i.nome + (i.registro ? ' — Reg. ' + i.registro : '')).join(' · ') : '—';
+  const sigNames = (instrutores && instrutores.length)
+    ? instrutores.map(i => i.nome || '________________________').join('<br>')
+    : '________________________';
   return '<div class="cert-page">' +
     '<div class="cert-border">' +
     logoHeader() +
@@ -709,21 +723,32 @@ function certificadoFrontHtml(info, instrutores){
       '<div><b>Local:</b> ' + info.local + '</div>' +
       '<div><b>Dias de treinamento:</b> ' + info.dias + '</div>' +
     '</div>' +
-    '<p class="cert-resp"><b>Responsável(is) técnico(s):</b> ' + respNames + '</p>' +
-    '<div class="cert-sigs"><div class="cert-sig">' + (instrutores && instrutores[0] ? instrutores[0].nome : '________________________') + '<br>Responsável Técnico pelo Treinamento</div><div class="cert-sig">' + info.empresa + '<br>Responsável / SESMT</div></div>' +
+    '<div class="cert-sigs single"><div class="cert-sig">' + sigNames + '<br><span class="cert-sig-label">Responsável(is) Técnico(s) pelo Treinamento</span></div></div>' +
+    '<p class="cert-verso-note">Ver detalhamento do conteúdo programático e dos instrutores no verso.</p>' +
     '</div></div>';
 }
 function certificadoBackHtml(conteudo, instrutores){
-  const rows = (instrutores && instrutores.length)
-    ? instrutores.map(i => '<tr><td>' + (i.nome||'—') + '</td><td>' + (i.registro||'—') + '</td><td>' + (i.conteudo||'—') + '</td><td>' + (i.data ? fmtDate(i.data) : '—') + '</td></tr>').join('')
-    : '<tr><td colspan="4">Nenhum instrutor detalhado.</td></tr>';
+  const blocks = (instrutores && instrutores.length)
+    ? instrutores.map(i =>
+        '<div class="cert-instrutor-block">' +
+          '<div class="cert-instrutor-info">' +
+            '<div><b>Instrutor:</b> ' + (i.nome||'—') + '</div>' +
+            '<div><b>Registro:</b> ' + (i.registro||'—') + '</div>' +
+            '<div class="full"><b>Conteúdo ministrado:</b> ' + (i.conteudo||'—') + '</div>' +
+            '<div><b>Data:</b> ' + (i.data ? fmtDate(i.data) : '—') + '</div>' +
+            '<div><b>Carga horária ministrada:</b> ' + (i.carga||'—') + '</div>' +
+          '</div>' +
+          '<div class="cert-instrutor-sig"><div class="cert-sig-line"></div><span>Assinatura do responsável técnico</span></div>' +
+        '</div>'
+      ).join('')
+    : '<p class="doc-p">Nenhum instrutor detalhado para este treinamento.</p>';
   return '<div class="cert-page">' +
     '<div class="cert-border cert-back">' +
     '<div class="eyebrow">Verso do Certificado</div>' +
     '<h1 class="cert-back-title">Conteúdo Programático</h1>' +
     '<div class="cert-content-box">' + (conteudo || 'Conteúdo programático não informado.') + '</div>' +
-    '<h2 class="cert-back-subtitle">Instrutores por conteúdo e data</h2>' +
-    '<table class="print-table"><thead><tr><th>Instrutor</th><th>Registro</th><th>Conteúdo ministrado</th><th>Data</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<h2 class="cert-back-subtitle">Instrutores responsáveis, conteúdo, carga horária e assinatura</h2>' +
+    blocks +
     '</div></div>';
 }
 function docPage(parts){ return docShell('Documento', parts.join('')); }
@@ -752,12 +777,20 @@ function printCss(){
   '.cert-p{font-size:14px; line-height:1.7; max-width:640px; margin:8px auto;}' +
   '.cert-name{font-size:25px; margin:16px 0; border-bottom:2px solid #0F2A47; display:inline-block; padding-bottom:6px;}' +
   '.cert-info-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; max-width:560px; margin:18px auto; text-align:left; font-size:12.5px;}' +
-  '.cert-resp{font-size:12px; margin-top:10px;}' +
   '.cert-sigs{display:flex; justify-content:space-around; margin-top:50px;}' +
-  '.cert-sig{width:230px; border-top:1px solid #16202B; padding-top:8px; font-size:11.5px;}' +
+  '.cert-sigs.single{justify-content:center;}' +
+  '.cert-sig{width:280px; border-top:1px solid #16202B; padding-top:8px; font-size:12.5px; line-height:1.5;}' +
+  '.cert-sig-label{display:block; margin-top:6px; font-size:10.5px; color:#5B6B7A; font-family:Arial,sans-serif; text-transform:uppercase; letter-spacing:.4px;}' +
+  '.cert-verso-note{margin-top:20px; font-size:10.5px; color:#5B6B7A; font-family:Arial,sans-serif;}' +
   '.cert-back-title{font-size:24px; margin:10px 0 16px; color:#0F2A47;}' +
   '.cert-back-subtitle{font-size:16px; margin:24px 0 8px; color:#0F2A47; font-family:Arial,sans-serif;}' +
   '.cert-content-box{font-family:Arial,sans-serif; font-size:13px; line-height:1.7; background:#F5F6F4; border-radius:4px; padding:16px 18px;}' +
+  '.cert-instrutor-block{font-family:Arial,sans-serif; text-align:left; border:1px solid #DCE2E6; border-radius:5px; padding:14px 16px; margin-top:14px;}' +
+  '.cert-instrutor-info{display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; font-size:12.5px;}' +
+  '.cert-instrutor-info .full{grid-column:1/-1;}' +
+  '.cert-instrutor-sig{text-align:center; margin-top:22px;}' +
+  '.cert-sig-line{border-top:1px solid #16202B; width:260px; margin:0 auto 6px;}' +
+  '.cert-instrutor-sig span{font-size:11px; color:#5B6B7A;}' +
   '@media print{ .doc-page, .cert-page{padding:18px;} }';
 }
 function openPrintWindow(html){ const w = window.open('', '_blank'); w.document.open(); w.document.write(html); w.document.close(); }
