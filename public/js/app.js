@@ -706,9 +706,6 @@ function comprovantePageHtml(nome, nr, data, resp){
   '</div>';
 }
 function certificadoFrontHtml(info, instrutores){
-  const sigNames = (instrutores && instrutores.length)
-    ? instrutores.map(i => i.nome || '________________________').join('<br>')
-    : '________________________';
   return '<div class="cert-page">' +
     '<div class="cert-border">' +
     logoHeader() +
@@ -723,7 +720,7 @@ function certificadoFrontHtml(info, instrutores){
       '<div><b>Local:</b> ' + info.local + '</div>' +
       '<div><b>Dias de treinamento:</b> ' + info.dias + '</div>' +
     '</div>' +
-    '<div class="cert-sigs single"><div class="cert-sig">' + sigNames + '<br><span class="cert-sig-label">Responsável(is) Técnico(s) pelo Treinamento</span></div></div>' +
+    '<div class="cert-sigs single"><div class="cert-sig">' + info.nome + '<br><span class="cert-sig-label">Assinatura do Participante</span></div></div>' +
     '<p class="cert-verso-note">Ver detalhamento do conteúdo programático e dos instrutores no verso.</p>' +
     '</div></div>';
 }
